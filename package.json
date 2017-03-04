@@ -1,0 +1,35 @@
+{
+  "name": "typed-store",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tsc && ava"
+  },
+  "ava": {
+    "files": [
+      "built/test.js"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ascoders/typed-store.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ascoders/typed-store/issues"
+  },
+  "homepage": "https://github.com/ascoders/typed-store#readme",
+  "devDependencies": {
+    "@types/react": "^15.0.14",
+    "@types/react-test-renderer": "^15.4.2",
+    "ava": "^0.18.2",
+    "react-test-renderer": "^15.4.2",
+    "typescript": "^2.2.1"
+  },
+  "dependencies": {
+    "react": "^15.4.2",
+    "redux": "^3.6.0"
+  }
+}
