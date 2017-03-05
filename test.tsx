@@ -2,7 +2,7 @@ import test from 'ava'
 import * as React from 'react'
 import { create } from 'react-test-renderer'
 
-import { Connect, Provider, BaseAction, IAction } from './index'
+import { Connect, Provider, BaseAction, IAction, Reducer } from './index'
 
 /**
  * store
@@ -24,6 +24,7 @@ class User extends BaseAction<States> {
         return name
     }
 
+    @Reducer('changeFirstName')
     private changeFirstNameReducer(state: UserState, action: IAction<string>) {
         return {
             ...state,
@@ -36,6 +37,7 @@ class User extends BaseAction<States> {
         return name
     }
 
+    @Reducer('changeFirstNameAsync')
     private changeFirstNameAsyncReducer(state: UserState, action: IAction<string>) {
         return {
             ...state,
@@ -58,6 +60,7 @@ class User extends BaseAction<States> {
         return this.getState().user.firstName
     }
 
+    @Reducer('doubleFirstName')
     private doubleFirstNameReducer(state: UserState, action: IAction<string>) {
         return {
             ...state,
@@ -141,7 +144,7 @@ test('async action', t => {
 
         render() {
             return (
-                <div>123</div>
+                <div>{this.props.firstName}</div>
             )
         }
     }

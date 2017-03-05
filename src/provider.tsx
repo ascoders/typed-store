@@ -33,22 +33,26 @@ export default class Provider extends React.Component<Props, any> {
             // 当前 namespace 下所有 actions 实例
             const actions = this.props.actions[namespace]
 
+            // 记录了所有 reducer 的 Map
+            const actionsReducers = actions['reducers'] as Map<string, Function> || new Map()
+
             this.actions[namespace] = {}
 
             // 获取当前 actions 实例的类上所有方法名
             Object.getOwnPropertyNames(Object.getPrototypeOf(actions))
-                .filter(methodName => methodName !== 'constructor')
+                .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
                 .forEach(methodName => {
-                    if (methodName.endsWith('Reducer')) { // reducer
+                    if (actionsReducers.has(methodName)) { // 当前方法是 reducer
                         // 设置当前 namespace 的 reducers
                         if (!this.namespaceMapReducers.has(namespace)) {
                             this.namespaceMapReducers.set(namespace, new Map())
                         }
+                        const type = actionsReducers.get(methodName)
                         const reducers = this.namespaceMapReducers.get(namespace)
-                        const reducerType = `${namespace}/${methodName.replace(/Reducer$/g, '')}`
+                        const reducerType = `${namespace}/${type}`
                         reducers.set(reducerType, actions[methodName])
                         this.namespaceMapReducers.set(namespace, reducers)
-                    } else { // action
+                    } else { // 当前方法是 action
                         this.actions[namespace][methodName] = actions[methodName]
                     }
                 })
