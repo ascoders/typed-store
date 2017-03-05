@@ -14,19 +14,11 @@ export default <State, Props>(mapStateToProps?: (state?: State, props?: Props) =
             typedStore: React.PropTypes.object
         }
 
+        // 存储了要注入的数据        
+        public state = {}
+
         private store: Store<any>
         private unsubscribe: Unsubscribe
-
-        // 用户注入的数据
-        private injectedData: object
-
-        // shouldComponentUpdate(nextProps: any) {
-        //     if (!shallowEqual(this.props, nextProps)) {
-        //         return true
-        //     }
-        //
-        //     return false
-        // }
 
         componentWillMount() {
             const typedStore: TypedStore = this.context.typedStore
@@ -37,12 +29,10 @@ export default <State, Props>(mapStateToProps?: (state?: State, props?: Props) =
 
             this.store = typedStore.store
 
-            // 拿到用户想要的数据
-            this.injectedData = mapStateToProps(this.store.getState(), this.props)
+            this.updateState()
 
             this.unsubscribe = this.store.subscribe(() => {
-                this.injectedData = mapStateToProps(this.store.getState(), this.props)
-                this.forceUpdate()
+                this.updateState()
             })
         }
 
@@ -54,9 +44,28 @@ export default <State, Props>(mapStateToProps?: (state?: State, props?: Props) =
             this.unsubscribe()
         }
 
+        shouldComponentUpdate(nextProps: any, nextState: any) {
+            if (
+                shallowEqual(this.props, nextProps) &&
+                shallowEqual(this.state, nextState)
+            ) {
+                return false
+            }
+            return true
+        }
+
+        // 初始化或者 dispatch 了，更新当前 state
+        updateState() {
+            const injectedData = mapStateToProps(this.store.getState(), this.props)
+            this.setState({
+                ...injectedData
+            })
+        }
+
         render() {
             const typedStore: TypedStore = this.context.typedStore
 
+            // 将 action 方法实现 dispatch            
             const combinedActions: any = {}
             Object.keys(typedStore.actions).forEach(namespace => {
                 const actions = typedStore.actions[namespace]
@@ -93,7 +102,7 @@ export default <State, Props>(mapStateToProps?: (state?: State, props?: Props) =
             return React.createElement(decoratedComponent, {
                 ...this.props,
                 actions: combinedActions,
-                ...this.injectedData
+                ...this.state
             })
         }
     }

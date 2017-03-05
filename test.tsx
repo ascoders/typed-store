@@ -214,3 +214,35 @@ test('dispatch with get state', t => {
 
     return new Promise(resolve => setInterval(resolve))
 })
+
+test('pure render', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            lastName: state.user.lastName
+        }
+    })
+    class App extends React.Component<Props, any> {
+        componentWillMount() {
+            this.props.actions.user.changeFirstName('john')
+        }
+
+        componentWillReceiveProps(nextProps: Props) {
+            // will not run becauseof hasn't use firstName
+            t.false(true)
+        }
+
+        render() {
+            return (
+                <div>123</div>
+            )
+        }
+    }
+
+    create(
+        <Provider actions={new Actions()}>
+            <App />
+        </Provider>
+    )
+
+    return new Promise(resolve => setInterval(resolve))
+})
