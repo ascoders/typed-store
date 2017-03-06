@@ -71,7 +71,7 @@ export default <State, Props>(mapStateToProps?: (state?: State, props?: Props) =
                 const actions = typedStore.actions[namespace]
                 combinedActions[namespace] = {}
 
-                // 绑上 getState 方法                
+                // 绑上 getState 方法
                 actions.getState = typedStore.store.getState
 
                 Object.keys(actions).forEach(actionName => {

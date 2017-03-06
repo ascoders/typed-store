@@ -2,7 +2,7 @@ import test from 'ava'
 import * as React from 'react'
 import { create } from 'react-test-renderer'
 
-import { Connect, Provider, BaseAction, IAction, Reducer } from './index'
+import { Connect, Provider, BaseAction, Reducer } from './index'
 
 /**
  * store
@@ -21,28 +21,14 @@ class User extends BaseAction<States> {
 
     // 修改 firstName    
     public changeFirstName(name: string) {
+        this.changeFirstNameReducer(name)
         return name
-    }
-
-    @Reducer('changeFirstName')
-    private changeFirstNameReducer(state: UserState, action: IAction<string>) {
-        return {
-            ...state,
-            firstName: action.payload
-        }
     }
 
     // 异步修改 firstName
     public async changeFirstNameAsync(name: string) {
+        this.changeFirstNameAsyncReducer(name)
         return name
-    }
-
-    @Reducer('changeFirstNameAsync')
-    private changeFirstNameAsyncReducer(state: UserState, action: IAction<string>) {
-        return {
-            ...state,
-            firstName: action.payload
-        }
     }
 
     // 同步拿到 state
@@ -57,14 +43,30 @@ class User extends BaseAction<States> {
 
     // 触发一个与当前 store 数据相关的 reducer（虽然 redux 不建议这么做，会导致数据不可回溯）
     public async doubleFirstName() {
-        return this.getState().user.firstName
+        this.doubleFirstNameReducer(this.getState().user.firstName)
     }
 
-    @Reducer('doubleFirstName')
-    private doubleFirstNameReducer(state: UserState, action: IAction<string>) {
+    @Reducer
+    private changeFirstNameReducer(name: string) {
         return {
-            ...state,
-            firstName: action.payload + action.payload
+            ...this.getState().user,
+            firstName: name
+        }
+    }
+
+    @Reducer
+    private changeFirstNameAsyncReducer(name: string) {
+        return {
+            ...this.getState().user,
+            firstName: name
+        }
+    }
+
+    @Reducer
+    private doubleFirstNameReducer(firstName: string) {
+        return {
+            ...this.getState().user,
+            firstName: firstName + firstName
         }
     }
 }
