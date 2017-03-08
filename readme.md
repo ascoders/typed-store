@@ -1,4 +1,4 @@
-# rex
+# Rex
 
 Strong type support for redux!
 
