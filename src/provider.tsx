@@ -1,115 +1,148 @@
 import * as React from 'react'
-import { createStore, combineReducers, Store } from 'redux'
+import { createStore, combineReducers, Store, Unsubscribe } from 'redux'
+import shallowEqual from './utils/shallow-equal'
 
 export interface TypedStore {
+    // 全局 store
     store: Store<any>
+    // 全局 reducers，所有组件的 reducer 都 merge 进去
+    reducers: {
+        [namespace: string]: any
+    }
+    // 暂时没什么用，目前调用直接 dispatch，调用这里可以获得类型支持
     actions: any
 }
 
 interface Props {
+    /**
+     * 命名空间
+     */
+    namespace?: string
+
     actions?: any
 }
 
 export default class Provider extends React.Component<Props, any> {
     static contextTypes = {
-        typedStore: React.PropTypes.object
+        typedStore: React.PropTypes.object,
+        // react-redux
+        store: React.PropTypes.object
     }
 
     static childContextTypes = {
-        typedStore: React.PropTypes.object.isRequired
+        typedStore: React.PropTypes.object.isRequired,
+        // react-redux
+        store: React.PropTypes.object
     }
 
-    // namespace -> { type -> reducer } 的二维映射关系    
-    private namespaceMapReducers = new Map<string, Map<string, any>>()
+    // 存储了要注入的数据        
+    public state = {}
 
-    // namespace -> initState 映射关系    
-    private namespaceInitState = new Map<string, object>()
+    // 取消 redux 监听    
+    private unsubscribe: Unsubscribe
 
-    // namespace -> namespace -> actionName 映射关系
+    // 当前组件全部 action
+    // 和 this.props.actions 相比，绑定了一些函数，修改所有调用的reducer函数
     private actions: any = {}
+
+    // 当前组件全部 reducer
+    private reducers = new Map<string, any>()
+
+    private initState: object = {}
 
     // context 中所有存储数据
     private typedStore: TypedStore
 
+    shouldComponentUpdate(nextProps: any, nextState: any) {
+        if (
+            shallowEqual(this.props, nextProps) &&
+            shallowEqual(this.state, nextState)
+        ) {
+            return false
+        }
+        return true
+    }
+
     componentWillMount() {
-        if (!this.context.typedStore) { // 如果 context 实例不存在，就创建，并暂存起来，下面方法会塞给 context
+        // 创建或者拿到 this.typedStore
+        if (!this.context.typedStore) {
             this.typedStore = {
-                store: createStore(function () { }),
-                actions: {}
+                store: this.context.store || createStore(function () { }), // 优先取 react-redux 的 store
+                actions: {},
+                reducers: {}
             }
-        } else { // typedStore 一定最终指向唯一的数据
+        } else {
             this.typedStore = this.context.typedStore
         }
 
-        Object.keys(this.props.actions).forEach(namespace => {
-            // 当前 namespace 下所有 actions 实例
-            const actions = this.props.actions[namespace]
+        // 记录了所有 reducer 的 Map
+        const actionsReducers = this.props.actions['reducers'] as Set<string> || new Set()
 
-            // 记录了所有 reducer 的 Map
-            const actionsReducers = actions['reducers'] as Set<string> || new Set()
+        // 获取当前 actions 实例的类上所有方法名
+        // 设置 this.actions this.reducers
+        Object.getOwnPropertyNames(Object.getPrototypeOf(this.props.actions))
+            .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
+            .map(methodName => {
+                // 先把 props 的 actions 赋值到 this 上
+                this.actions[methodName] = this.props.actions[methodName]
+                return methodName
+            })
+            .forEach(methodName => {
+                // 如果当前方法是 reducer
+                if (actionsReducers.has(methodName)) {
+                    const reducerType = `${this.props.namespace}/${methodName}`
 
-            const _this = this
+                    // reducer 真实效果
+                    this.reducers.set(reducerType, (state: any, action: any) => {
+                        return this.props.actions[methodName].apply({
+                            // 绑定 getState
+                            getState: () => {
+                                return this.typedStore.store.getState()[this.props.namespace]
+                            }
+                        }, action.payload)
+                    })
 
-            this.actions[namespace] = {}
-
-            // 获取当前 actions 实例的类上所有方法名
-            Object.getOwnPropertyNames(Object.getPrototypeOf(actions))
-                .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
-                .forEach(methodName => {
-                    this.actions[namespace][methodName] = actions[methodName]
-
-                    if (actionsReducers.has(methodName)) { // 当前方法是 reducer
-                        // 设置当前 namespace 的 reducers
-                        if (!this.namespaceMapReducers.has(namespace)) {
-                            this.namespaceMapReducers.set(namespace, new Map())
-                        }
-                        const reducers = this.namespaceMapReducers.get(namespace)
-                        const reducerType = `${namespace}/${methodName}`
-                        reducers.set(reducerType, (state: any, action: any) => {
-                            return actions[methodName].apply({
-                                // 绑定 getState
-                                getState: this.typedStore.store.getState
-                            }, action.payload)
+                    // 重写这个 reducer，让调用的时候触发 dispatch
+                    this.actions[methodName] = (...args: any[]) => {
+                        // 触发 dispatch
+                        this.typedStore.store.dispatch({
+                            type: `${this.props.namespace}/${methodName}`,
+                            payload: args
                         })
-                        this.namespaceMapReducers.set(namespace, reducers)
-
-                        // 重写这个 reducer
-                        this.actions[namespace][methodName] = function (...args: any[]) {
-                            // 触发 dispatch
-                            _this.typedStore.store.dispatch({
-                                type: `${namespace}/${methodName}`,
-                                payload: args
-                            })
-                        }
                     }
-                })
-
-            // 记录当前 namespace 的 initState
-            // 如果有多个 action 属于同一个 namespace，将会覆盖多次，正常情况
-            this.namespaceInitState.set(namespace, actions.constructor.initState)
-
-            // 把当前 Provider 的 actions merge 进全局 actions
-            Object.assign(this.typedStore.actions, this.actions)
-
-            /**
-             * 更新 reducer
-             */
-            // combineReducers 结构
-            const fitCombineReducers: {
-                [nameSpace: string]: any
-            } = {}
-
-            // fitCombineReducers 赋值
-            this.namespaceMapReducers.forEach((reducerMap, namespace) => {
-                fitCombineReducers[namespace] = (state = this.namespaceInitState.get(namespace), action: any) => {
-                    if (reducerMap.has(action.type)) {
-                        return reducerMap.get(action.type)(state, action)
-                    }
-                    return state
                 }
             })
-            this.typedStore.store.replaceReducer(combineReducers(fitCombineReducers))
+
+        // 设置 initState
+        this.initState = this.props.actions.constructor.initState
+
+        // 把自己的 reducers 聚合到 context 的全局 reducers 里
+        this.typedStore.reducers[this.props.namespace] = (state = this.initState, action: any) => {
+            if (this.reducers.has(action.type)) {
+                return this.reducers.get(action.type)(state, action)
+            }
+            // 没有对应的 reducer 处理
+            return state
+        }
+
+        // 更新 store 的 reducer
+        this.typedStore.store.replaceReducer(combineReducers(this.typedStore.reducers))
+
+        // 监听所有数据变化        
+        this.unsubscribe = this.typedStore.store.subscribe(() => {
+            this.updateState()
         })
+
+        // 获得初始化数据
+        this.updateState()
+    }
+
+    componentWillUnmount() {
+        if (!this.unsubscribe) {
+            return
+        }
+
+        this.unsubscribe()
     }
 
     getChildContext() {
@@ -118,7 +151,18 @@ export default class Provider extends React.Component<Props, any> {
         }
     }
 
+    // 初始化或者 dispatch 了，更新当前 state
+    updateState() {
+        const injectedData = this.typedStore.store.getState()[this.props.namespace]
+        this.setState({
+            ...injectedData
+        })
+    }
+
     render() {
-        return React.Children.only(this.props.children)
+        return React.cloneElement(this.props.children as JSX.Element, {
+            store: this.state,
+            actions: this.actions
+        })
     }
 }
