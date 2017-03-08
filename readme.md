@@ -1,9 +1,9 @@
-# typed-store
+# rex
 
 Strong type support for redux!
 
 ```bash
-npm i typed-store --save
+npm i rex --save
 ```
 
 ## Example
@@ -11,14 +11,14 @@ npm i typed-store --save
 As you can see.. Very predictable code. When reducer is called, it will automatically issue dispatch, which is really Redux.
 
 ```typescript
-import { Connect, Provider, BaseAction, Reducer } from 'typed-store'
+import { Rex, BaseAction, Reducer } from 'rex'
 
-class UserState {
+class Store {
     firstName = 'job'
 }
 
-class User extends BaseAction<States> {
-    static initState = new UserState()
+class Actions extends BaseAction<Store> {
+    static initState = new Store()
    
     public changeFirstName(name: string) {
         this.changeFirstNameReducer(name)
@@ -33,37 +33,24 @@ class User extends BaseAction<States> {
     }
 }
 
-interface States {
-    user: UserState
-}
-
-class Actions {
-    user = new User()
-}
-
-export (
-    <Provider actions={new Actions()}>
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Provider>
+    </Rex>
 )
 ```
 
-And enjoy it ths same as common Redux.
+And enjoy it ths same as common Redux. `store` and `actions` will be automatically injected into the component, are under the current namespace.
 
 ```typescript
-@Connect<States, Props>((state, props) => {
-    return {
-        firstName: state.user.firstName
-    }
-})
 class App extends React.Component<Props, any> {
     componentWillMount() {
-        this.props.actions.user.changeFirstName('nick')
+        this.props.actions.changeFirstName('nick')
     }
 
     render() {
         return (
-            <div>{this.props.firstName}</div>
+            <div>{this.props.store.firstName}</div>
         )
     }
 }
@@ -71,47 +58,167 @@ class App extends React.Component<Props, any> {
 
 You will see nick in the page.
 
-## You can get the return value of action
+## Scene
+
+### How to get the return value of action?
 
 ```typescript
-class User extends BaseAction<States> {
+class Actions extends BaseAction<Store> {
     static initState = new UserState()
    
     public changeFirstName(name: string) {
-        this.changeFirstNameReducer(name)
         return `name is ${name}`
     }
 }
 
-@Connect<States, Props>((state, props) => {
-    return {}
-})
 class App extends React.Component<Props, any> {
     componentWillMount() {
-        console.log(this.props.actions.user.changeFirstName('nick')) // name is nick
+        const actionResult = this.props.actions.user.changeFirstName('nick')
+        console.log(actionResult) // name is nick
     }
-
-    render() {
-        return (
-            <div/>
-        )
-    }
+    // render..
 }
+
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </Rex>
+)
 ```
 
-Worked with async action too.
-
-## Accessing state
-
-You can accessing state in action and reducer by `this.getState()`
+### How to get async action value?
 
 ```typescript
-class User extends BaseAction<States> {
+class Actions extends BaseAction<Store> {
+    static initState = new UserState()
+   
+    public async changeFirstName(name: string) {
+        const result = await someAsyncOptionLikeFetch(name) // good ${name}
+        return `result is ${result}`
+    }
+}
+
+class App extends React.Component<Props, any> {
+    async componentWillMount() {
+        const actionResult = await this.props.actions.user.changeFirstName('nick')
+        console.log(actionResult) // result is good nick
+    }
+    // render..
+}
+
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </Rex>
+)
+```
+
+### How to dispatch?
+
+Just call the method using `@Reducer` decorator, which automatically triggers the dispatch, and is received and processed by the reducer.
+
+As long as you want, you can trigger multiple reducer.
+
+In the reducer, you can access current state by `this.getState()`.
+
+```typescript
+class Actions extends BaseAction<Store> {
+    static initState = new UserState()
+   
+    public changeFirstName(name: string) {
+        this.customReducer(name)
+    }
+
+    @Reducer customReducer(name: string) {
+        return {
+            ...this.getState(),
+            nickname: name
+        }
+    }
+}
+
+class App extends React.Component<Props, any> {
+    componentWillMount() {
+        this.props.actions.user.changeFirstName('nick')
+    }
+    // render..
+}
+
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </Rex>
+)
+```
+
+### How to accessing state in action?
+
+It's similar to reducer, just call `this.getState()`.
+
+```typescript
+class Actions extends BaseAction<Store> {
+    static initState = new UserState()
+   
+    public changeFirstName(name: string) {
+        this.customReducer(this.getState().nickname + name)
+    }
+}
+
+class App extends React.Component<Props, any> {
+    componentWillMount() {
+        this.props.actions.user.changeFirstName('nick')
+    }
+    // render..
+}
+
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </Rex>
+)
+```
+
+### How to dispatch out of my scope?
+
+use `this.dispatch()`
+
+```typescript
+class Actions extends BaseAction<Store> {
     static initState = new UserState()
    
     public changeFirstName() {
-        return `name is ${this.getState().user.firstname}`
+        this.dispatch('application/loginOut', {
+            jump: false
+        })
     }
+}
+
+class App extends React.Component<Props, any> {
+    componentWillMount() {
+        this.props.actions.user.changeFirstName()
+    }
+    // render..
+}
+
+export default (
+    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </Rex>
+)
+```
+
+### How to create multiple components, and data streams complement each other?
+
+You can override it's namespace.
+
+```typescript
+render() {
+    return (
+        <div>
+            <SubApp namespace="sub1"/>
+            <SubApp namespace="sub2"/>
+        </div>
+    )
 }
 ```
 

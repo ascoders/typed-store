@@ -4,12 +4,21 @@ import { create } from 'react-test-renderer'
 
 import { Connect, Provider, BaseAction, Reducer } from './index'
 
+// getState => getCustomState
+// 拓展 action
+
 /**
  * store
  */
 
 class Store {
+    /**
+     * 用户名，默认是 job
+     */
     firstName = 'job'
+    /**
+     * 用户 lastName，默认是 tena
+     */
     lastName = 'tena'
 }
 
@@ -19,7 +28,18 @@ class Actions extends BaseAction<Store> {
     // 修改 firstName    
     public changeFirstName(name: string) {
         this.changeFirstNameReducer(name)
+
         return name
+    }
+
+    public async request() {
+        // before
+        
+        // after
+    }
+
+    reducer(isFetching:boolean) {
+        
     }
 
     // 异步修改 firstName
