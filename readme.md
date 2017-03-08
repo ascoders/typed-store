@@ -1,9 +1,9 @@
-# Rex
+# TypedStore
 
 Strong type support for redux!
 
 ```bash
-npm i rex --save
+npm i TypedStore --save
 ```
 
 ## Example
@@ -11,7 +11,7 @@ npm i rex --save
 As you can see.. Very predictable code. When reducer is called, it will automatically issue dispatch, which is really Redux.
 
 ```typescript
-import { Rex, BaseAction, Reducer } from 'rex'
+import { TypedStore, BaseAction, Reducer } from 'TypedStore'
 
 class Store {
     firstName = 'job'
@@ -34,9 +34,9 @@ class Actions extends BaseAction<Store> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 
@@ -80,9 +80,9 @@ class App extends React.Component<Props, any> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 
@@ -107,9 +107,9 @@ class App extends React.Component<Props, any> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 
@@ -145,9 +145,9 @@ class App extends React.Component<Props, any> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 
@@ -172,9 +172,9 @@ class App extends React.Component<Props, any> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 
@@ -201,9 +201,9 @@ class App extends React.Component<Props, any> {
 }
 
 export default (
-    <Rex namespace="myCustomUserDemo" actions={new Actions()}>
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
         <App />
-    </Rex>
+    </TypedStore>
 )
 ```
 

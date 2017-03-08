@@ -8,7 +8,7 @@
   },
   "ava": {
     "files": [
-      "built/test.js"
+      "built/test/*.js"
     ]
   },
   "repository": {

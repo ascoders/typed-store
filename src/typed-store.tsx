@@ -78,13 +78,19 @@ export default class Provider extends React.Component<Props, any> {
         // 记录了所有 reducer 的 Map
         const actionsReducers = this.props.actions['reducers'] as Set<string> || new Set()
 
+        // 在类的原型链绑定辅助函数
+        this.props.actions.constructor.prototype.getLocalState = () => {
+            return this.typedStore.store.getState()[this.props.namespace]
+        }
+        this.props.actions.constructor.prototype.dispatch = this.typedStore.store.dispatch
+
         // 获取当前 actions 实例的类上所有方法名
         // 设置 this.actions this.reducers
         Object.getOwnPropertyNames(Object.getPrototypeOf(this.props.actions))
             .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
             .map(methodName => {
-                // 先把 props 的 actions 赋值到 this 上
                 this.actions[methodName] = this.props.actions[methodName]
+                
                 return methodName
             })
             .forEach(methodName => {
@@ -95,8 +101,8 @@ export default class Provider extends React.Component<Props, any> {
                     // reducer 真实效果
                     this.reducers.set(reducerType, (state: any, action: any) => {
                         return this.props.actions[methodName].apply({
-                            // 绑定 getState
-                            getState: () => {
+                            // 绑定 getLocalState
+                            getLocalState: () => {
                                 return this.typedStore.store.getState()[this.props.namespace]
                             }
                         }, action.payload)
