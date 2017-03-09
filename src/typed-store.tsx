@@ -18,7 +18,9 @@ interface Props {
      * 命名空间
      */
     namespace?: string
-
+    /**
+     * 当前组件的局部 actions
+     */    
     actions?: any
 }
 
@@ -53,6 +55,67 @@ export default class Provider extends React.Component<Props, any> {
     // context 中所有存储数据
     private typedStore: TypedStore
 
+    /**
+     * 在其构造函数绑定自定义方法
+     */
+    bindMethodInConstructor(target:any) { 
+        target.constructor.prototype.getLocalState = () => {
+            return this.typedStore.store.getState()[this.props.namespace]
+        }
+        target.constructor.prototype.dispatch = (action: any) => {
+            this.typedStore.store.dispatch({
+                type: action.type,
+                payload: [action.payload]
+            })
+        }
+        target.constructor.prototype.namespace = this.props.namespace
+    }
+
+    /**
+     * 解析某个实例，剥离其 reducer 方法
+     */
+    getReducers(target: any) { 
+        // 记录了所有 reducer 的 Map
+        const actionsReducers = target['reducers'] as Set<string> || new Set()
+
+        Object.getOwnPropertyNames(Object.getPrototypeOf(target))
+            .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
+            .map(methodName => {
+                this.actions[methodName] = target[methodName]
+
+                return methodName
+            })
+            .forEach(methodName => {
+                // 如果当前方法是 reducer
+                if (actionsReducers.has(methodName)) {
+                    const reducerType = `${this.props.namespace}/${methodName}`
+
+                    // reducer 真实效果
+                    this.reducers.set(reducerType, (state: any, action: any) => {
+                        return target[methodName].apply({
+                            // 绑定 getLocalState
+                            getLocalState: () => {
+                                return this.typedStore.store.getState()[this.props.namespace]
+                            },
+                            dispatch: () => {
+                                throw Error('不要在 reducer 方法中 dispatch')
+                            },
+                            namespace: this.props.namespace
+                        }, action.payload)
+                    })
+
+                    // 重写这个 reducer，让调用的时候触发 dispatch
+                    this.actions[methodName] = (...args: any[]) => {
+                        // 触发 dispatch
+                        this.typedStore.store.dispatch({
+                            type: `${this.props.namespace}/${methodName}`,
+                            payload: args
+                        })
+                    }
+                }
+            })
+    }
+
     shouldComponentUpdate(nextProps: any, nextState: any) {
         if (
             shallowEqual(this.props, nextProps) &&
@@ -75,49 +138,22 @@ export default class Provider extends React.Component<Props, any> {
             this.typedStore = this.context.typedStore
         }
 
-        // 记录了所有 reducer 的 Map
-        const actionsReducers = this.props.actions['reducers'] as Set<string> || new Set()
-
         // 在类的原型链绑定辅助函数
-        this.props.actions.constructor.prototype.getLocalState = () => {
-            return this.typedStore.store.getState()[this.props.namespace]
-        }
-        this.props.actions.constructor.prototype.dispatch = this.typedStore.store.dispatch
+        this.bindMethodInConstructor(this.props.actions)
+
+        // 为插件绑定辅助函数
+        this.props.actions.constructor.prototype.plugins = this.props.actions.plugins
+        this.props.actions.constructor.prototype.plugins && Object.keys(this.props.actions.constructor.prototype.plugins).forEach(key => { 
+            const plugin = this.props.actions.constructor.prototype.plugins[key]
+            // 在插件原型链绑定辅助函数
+            this.bindMethodInConstructor(plugin)
+            // 设置 reducers
+            this.getReducers(plugin)
+        })
 
         // 获取当前 actions 实例的类上所有方法名
         // 设置 this.actions this.reducers
-        Object.getOwnPropertyNames(Object.getPrototypeOf(this.props.actions))
-            .filter(methodName => methodName !== 'constructor' && methodName !== 'reducers')
-            .map(methodName => {
-                this.actions[methodName] = this.props.actions[methodName]
-                
-                return methodName
-            })
-            .forEach(methodName => {
-                // 如果当前方法是 reducer
-                if (actionsReducers.has(methodName)) {
-                    const reducerType = `${this.props.namespace}/${methodName}`
-
-                    // reducer 真实效果
-                    this.reducers.set(reducerType, (state: any, action: any) => {
-                        return this.props.actions[methodName].apply({
-                            // 绑定 getLocalState
-                            getLocalState: () => {
-                                return this.typedStore.store.getState()[this.props.namespace]
-                            }
-                        }, action.payload)
-                    })
-
-                    // 重写这个 reducer，让调用的时候触发 dispatch
-                    this.actions[methodName] = (...args: any[]) => {
-                        // 触发 dispatch
-                        this.typedStore.store.dispatch({
-                            type: `${this.props.namespace}/${methodName}`,
-                            payload: args
-                        })
-                    }
-                }
-            })
+        this.getReducers(this.props.actions)
 
         // 设置 initState
         this.initState = this.props.actions.constructor.initState

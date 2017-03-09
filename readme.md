@@ -27,22 +27,21 @@ class Actions extends BaseAction<Store> {
     @Reducer
     private changeFirstNameReducer(name: string) {
         return {
-            ...this.getState().user,
+            ...this.getLocalState().user,
             firstName: name
         }
     }
 }
-
-export default (
-    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
-        <App />
-    </TypedStore>
-)
 ```
 
 And enjoy it ths same as common Redux. `store` and `actions` will be automatically injected into the component, are under the current namespace.
 
 ```typescript
+interface Props {
+    actions?: Actions
+    store?: Store
+}
+
 class App extends React.Component<Props, any> {
     componentWillMount() {
         this.props.actions.changeFirstName('nick')
@@ -54,84 +53,60 @@ class App extends React.Component<Props, any> {
         )
     }
 }
+
+export default (
+    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
+        <App />
+    </TypedStore>
+)
 ```
 
 You will see nick in the page.
 
 ## Scene
 
-### How to get the return value of action?
-
-```typescript
-class Actions extends BaseAction<Store> {
-    static initState = new UserState()
-   
-    public changeFirstName(name: string) {
-        return `name is ${name}`
-    }
-}
-
-class App extends React.Component<Props, any> {
-    componentWillMount() {
-        const actionResult = this.props.actions.user.changeFirstName('nick')
-        console.log(actionResult) // name is nick
-    }
-    // render..
-}
-
-export default (
-    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
-        <App />
-    </TypedStore>
-)
-```
-
-### How to get async action value?
-
-```typescript
-class Actions extends BaseAction<Store> {
-    static initState = new UserState()
-   
-    public async changeFirstName(name: string) {
-        const result = await someAsyncOptionLikeFetch(name) // good ${name}
-        return `result is ${result}`
-    }
-}
-
-class App extends React.Component<Props, any> {
-    async componentWillMount() {
-        const actionResult = await this.props.actions.user.changeFirstName('nick')
-        console.log(actionResult) // result is good nick
-    }
-    // render..
-}
-
-export default (
-    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
-        <App />
-    </TypedStore>
-)
-```
-
-### How to dispatch?
+### How dispatch work?
 
 Just call the method using `@Reducer` decorator, which automatically triggers the dispatch, and is received and processed by the reducer.
 
 As long as you want, you can trigger multiple reducer.
 
-In the reducer, you can access current state by `this.getState()`.
+In the reducer, you can access current state by `this.getLocalState()`.
 
 ```typescript
 class Actions extends BaseAction<Store> {
     static initState = new UserState()
    
     public changeFirstName(name: string) {
-        this.customReducer(name)
+        this.customReducer(name, 'hello')
     }
 
-    @Reducer customReducer(name: string) {
+    @Reducer
+    private customReducer(name: string, say: string) {
         return {
-            ...this.getState(),
+            ...this.getLocalState(),
+            nickname: say + '' + name
+        }
+    }
+}
+```
+
+### How to accessing state in action and reducer?
+
+Just call `this.getLocalState()`.
+
+```typescript
+class Actions extends BaseAction<Store> {
+    static initState = new UserState()
+   
+    public changeFirstName(name: string) {
+        this.customReducer(this.getLocalState().nickname + name)
+    }
+
+    @Reducer
+    private customReducer(name: string) {
+        return {
+            ...this.getLocalState(),
             nickname: name
         }
     }
@@ -151,45 +126,52 @@ export default (
 )
 ```
 
-### How to accessing state in action?
-
-It's similar to reducer, just call `this.getState()`.
+### How to get the return value of action?
 
 ```typescript
 class Actions extends BaseAction<Store> {
     static initState = new UserState()
    
     public changeFirstName(name: string) {
-        this.customReducer(this.getState().nickname + name)
+        return `name is ${name}`
+    }
+
+    public async changeFirstNameAsync(name: string) {
+        return `name is ${name}`
     }
 }
 
 class App extends React.Component<Props, any> {
-    componentWillMount() {
-        this.props.actions.user.changeFirstName('nick')
+    async componentWillMount() {
+        const actionResult1 = this.props.actions.user.changeFirstName('nick')
+        console.log(actionResult1) // name is nick
+        const actionResult2 = await this.props.actions.user.changeFirstNameAsync('job')
+        console.log(actionResult2) // name is job
     }
-    // render..
 }
-
-export default (
-    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
-        <App />
-    </TypedStore>
-)
 ```
 
 ### How to dispatch out of my scope?
 
-use `this.dispatch()`
+use `this.dispatch()`, you can access `this.namespace` to get current namespace, use `this.namespace/reducerName` to access your own reducer, the reducer can only receive first arguments, from dispatch `payload` field.
 
 ```typescript
 class Actions extends BaseAction<Store> {
     static initState = new UserState()
    
-    public changeFirstName() {
-        this.dispatch('application/loginOut', {
-            jump: false
+    public changeFirstName(name: string) {
+        this.dispatch({
+            type: `${this.namespace}/changeName`,
+            payload: name
         })
+    }
+
+    @Reducer
+    private changeName(name: string) {
+        return {
+            ...this.getLocalState(),
+            nickname: name
+        }
     }
 }
 
@@ -197,17 +179,10 @@ class App extends React.Component<Props, any> {
     componentWillMount() {
         this.props.actions.user.changeFirstName()
     }
-    // render..
 }
-
-export default (
-    <TypedStore namespace="myCustomUserDemo" actions={new Actions()}>
-        <App />
-    </TypedStore>
-)
 ```
 
-### How to create multiple components, and data streams complement each other?
+### How to create multiple components, and use different namespace?
 
 You can override it's namespace.
 
