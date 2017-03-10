@@ -1,5 +1,7 @@
 # TypedStore
 
+<a href="https://travis-ci.org/ascoders/typed-store"><img src="https://img.shields.io/travis/ascoders/typed-store/master.svg?style=flat" alt="Build Status"></a>
+
 Strong type support for redux!
 
 ```bash
