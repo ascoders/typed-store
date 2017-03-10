@@ -5,7 +5,7 @@
 Strong type support for redux!
 
 ```bash
-npm i TypedStore --save
+npm i typed-store --save
 ```
 
 ## Example
