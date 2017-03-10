@@ -197,6 +197,41 @@ render() {
 }
 ```
 
+### Write plugin
+
+```typescript
+import { BaseAction, Reducer } from 'typed-store'
+
+class ExtendsAction extends BaseAction<any> {
+  changeFirstName() {
+    this.extendReducer('sarry')
+  }
+
+  @Reducer
+  private extendReducer(name: string) {
+    return {
+      ...this.getLocalState(),
+      firstName: name
+    }
+  }
+}
+```
+
+Now to use it:
+
+```typescript
+class Actions extends BaseAction<Store> {
+  static initState = new Store()
+  private plugins = {
+    extend: new ExtendsAction()
+  }
+
+  changeName() { 
+    this.plugins.extend.changeFirstName()
+  }
+}
+```
+
 ## Run test
 
 ```bash
