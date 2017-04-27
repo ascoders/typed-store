@@ -10,7 +10,7 @@ npm i typed-store --save
 
 ## Example
 
-As you can see.. Very predictable code. When reducer is called, it will automatically issue dispatch, which is really Redux.
+As you can see.. Very predictable code. When reducer is called, it will automatically dispatch, which is really Redux.
 
 ```typescript
 import { TypedStore, BaseAction, Reducer } from 'TypedStore'
