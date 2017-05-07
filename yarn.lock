@@ -1295,7 +1295,7 @@ extsprintf@1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.0.2.tgz#e1080e0658e300b06294990cc70e1502235fd550"
 
-fbjs@^0.8.4:
+fbjs@^0.8.4, fbjs@^0.8.9:
   version "0.8.9"
   resolved "https://registry.yarnpkg.com/fbjs/-/fbjs-0.8.9.tgz#180247fbd347dcc9004517b904f865400a0c8f14"
   dependencies:
@@ -2415,6 +2415,12 @@ promise@^7.1.1:
   dependencies:
     asap "~2.0.3"
 
+prop-types@^15.5.7:
+  version "15.5.8"
+  resolved "http://registry.npm.taobao.org/prop-types/download/prop-types-15.5.8.tgz#6b7b2e141083be38c8595aa51fc55775c7199394"
+  dependencies:
+    fbjs "^0.8.9"
+
 pseudomap@^1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/pseudomap/-/pseudomap-1.0.2.tgz#f052a28da70e618917ef0a8ac34c1ae5a68286b3"
@@ -2450,13 +2456,14 @@ react-test-renderer@^15.4.2:
     fbjs "^0.8.4"
     object-assign "^4.1.0"
 
-react@^15.4.2:
-  version "15.4.2"
-  resolved "https://registry.yarnpkg.com/react/-/react-15.4.2.tgz#41f7991b26185392ba9bae96c8889e7e018397ef"
+react@^15.5.4:
+  version "15.5.4"
+  resolved "http://registry.npm.taobao.org/react/download/react-15.5.4.tgz#fa83eb01506ab237cdc1c8c3b1cea8de012bf047"
   dependencies:
-    fbjs "^0.8.4"
+    fbjs "^0.8.9"
     loose-envify "^1.1.0"
     object-assign "^4.1.0"
+    prop-types "^15.5.7"
 
 read-all-stream@^3.0.0:
   version "3.1.0"

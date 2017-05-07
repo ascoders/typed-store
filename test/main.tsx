@@ -2,41 +2,27 @@ import test from 'ava'
 import * as React from 'react'
 import { create } from 'react-test-renderer'
 
-import { TypedStore, BaseAction, Reducer } from '../index'
+import { Connect, Provider, BaseAction, Reducer } from '../index'
 
 /**
  * store
  */
 
-class Store {
-    /**
-     * 用户名，默认是 job
-     */
+class UserState {
     firstName = 'job'
-    /**
-     * 用户 lastName，默认是 tena
-     */
     lastName = 'tena'
+    get fullName() {
+        return this.firstName + ' ' + this.lastName
+    }
 }
 
-class Actions extends BaseAction<Store> {
-    static initState = new Store()
+class User extends BaseAction<States> {
+    static initState = new UserState()
 
     // 修改 firstName    
     public changeFirstName(name: string) {
         this.changeFirstNameReducer(name)
-
         return name
-    }
-
-    public async request() {
-        // before
-        
-        // after
-    }
-
-    reducer(isFetching:boolean) {
-        
     }
 
     // 异步修改 firstName
@@ -47,23 +33,23 @@ class Actions extends BaseAction<Store> {
 
     // 同步拿到 state
     public findState() {
-         return this.getLocalState().lastName
+        return this.getState().user.fullName
     }
 
     // 异步拿到 state
     public async findStateAsync() {
-        return this.getLocalState().lastName
+        return this.getState().user.fullName
     }
 
     // 触发一个与当前 store 数据相关的 reducer（虽然 redux 不建议这么做，会导致数据不可回溯）
     public async doubleFirstName() {
-        this.doubleFirstNameReducer(this.getLocalState().firstName)
+        this.doubleFirstNameReducer(this.getState().user.firstName)
     }
 
     @Reducer
     private changeFirstNameReducer(name: string) {
         return {
-            ...this.getLocalState(),
+            ...this.getState().user,
             firstName: name
         }
     }
@@ -71,7 +57,7 @@ class Actions extends BaseAction<Store> {
     @Reducer
     private changeFirstNameAsyncReducer(name: string) {
         return {
-            ...this.getLocalState(),
+            ...this.getState().user,
             firstName: name
         }
     }
@@ -79,33 +65,48 @@ class Actions extends BaseAction<Store> {
     @Reducer
     private doubleFirstNameReducer(firstName: string) {
         return {
-            ...this.getLocalState(),
+            ...this.getState().user,
             firstName: firstName + firstName
         }
     }
 }
 
+class Actions {
+    user = new User()
+}
+
+interface States {
+    user: UserState
+}
+
 /**
  * component props
  */
-class Props {
+interface Props {
     // injected
     actions?: Actions
-    // injected
-    store?: Store
+
+    firstName?: string
+    fullName?: string
 }
 
 test('basic action', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            firstName: state.user.firstName,
+            fullName: state.user.fullName
+        }
+    })
     class App extends React.Component<Props, any> {
         componentWillMount() {
-            t.true(this.props.store.firstName === 'job')
-            t.true(this.props.store.lastName === 'tena')
-            const actionResult = this.props.actions.changeFirstName('abc')
+            t.true(this.props.firstName === 'job')
+            t.true(this.props.fullName === 'job tena')
+            const actionResult = this.props.actions.user.changeFirstName('abc')
             t.true(actionResult === 'abc')
         }
 
         componentWillReceiveProps(nextProps: Props) {
-            t.true(nextProps.store.firstName === 'abc')
+            t.true(nextProps.firstName === 'abc')
         }
 
         render() {
@@ -116,47 +117,60 @@ test('basic action', t => {
     }
 
     create(
-        <TypedStore namespace="myCustomUserDemo1" actions={new Actions()}>
+        <Provider actions={new Actions()}>
             <App />
-        </TypedStore>
+        </Provider>
     )
 
-    return new Promise(resolve => setTimeout(resolve, 10))
+    return new Promise(resolve => setInterval(resolve))
 })
 
 test('async action', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            firstName: state.user.firstName,
+            fullName: state.user.fullName
+        }
+    })
     class App extends React.Component<Props, any> {
         async componentWillMount() {
-            t.true(this.props.store.firstName === 'job')
-            const actionResult = await this.props.actions.changeFirstNameAsync('abc')
+            t.true(this.props.firstName === 'job')
+            t.true(this.props.fullName === 'job tena')
+            const actionResult = await this.props.actions.user.changeFirstNameAsync('abc')
             t.true(actionResult === 'abc')
         }
 
         componentWillReceiveProps(nextProps: Props) {
-            t.true(nextProps.store.firstName === 'abc')
+            t.true(nextProps.firstName === 'abc')
         }
 
         render() {
             return (
-                <div>{this.props.store.firstName}</div>
+                <div>{this.props.firstName}</div>
             )
         }
     }
 
     create(
-        <TypedStore namespace="myCustomUserDemo2" actions={new Actions()}>
+        <Provider actions={new Actions()}>
             <App />
-        </TypedStore>
+        </Provider>
     )
 
     return new Promise(resolve => setInterval(resolve))
 })
 
 test('get state', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            firstName: state.user.firstName,
+            fullName: state.user.fullName
+        }
+    })
     class App extends React.Component<Props, any> {
         async componentWillMount() {
-            t.true(this.props.actions.findState() === 'tena')
-            //t.true(await this.props.actions.findStateAsync() === 'tena')
+            t.true(this.props.actions.user.findState() === 'job tena')
+            t.true(await this.props.actions.user.findStateAsync() === 'job tena')
         }
 
         render() {
@@ -167,22 +181,27 @@ test('get state', t => {
     }
 
     create(
-        <TypedStore namespace="myCustomUserDemo3" actions={new Actions()}>
+        <Provider actions={new Actions()}>
             <App />
-        </TypedStore>
+        </Provider>
     )
 
     return new Promise(resolve => setInterval(resolve))
 })
 
 test('dispatch with get state', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            firstName: state.user.firstName
+        }
+    })
     class App extends React.Component<Props, any> {
         componentWillMount() {
-            this.props.actions.doubleFirstName()
+            this.props.actions.user.doubleFirstName()
         }
 
         componentWillReceiveProps(nextProps: Props) {
-            t.true(nextProps.store.firstName === 'jobjob')
+            t.true(nextProps.firstName === 'jobjob')
         }
 
         render() {
@@ -193,10 +212,43 @@ test('dispatch with get state', t => {
     }
 
     create(
-        <TypedStore namespace="myCustomUserDemo4" actions={new Actions()}>
+        <Provider actions={new Actions()}>
             <App />
-        </TypedStore>
+        </Provider>
     )
 
     return new Promise(resolve => setInterval(resolve))
 })
+
+test('pure render', t => {
+    @Connect<States, Props>((state, props) => {
+        return {
+            lastName: state.user.lastName
+        }
+    })
+    class App extends React.Component<Props, any> {
+        componentWillMount() {
+            this.props.actions.user.changeFirstName('john')
+        }
+
+        componentWillReceiveProps(nextProps: Props) {
+            // will not run becauseof haven't use firstName
+            t.false(true)
+        }
+
+        render() {
+            return (
+                <div>123</div>
+            )
+        }
+    }
+
+    create(
+        <Provider actions={new Actions()}>
+            <App />
+        </Provider>
+    )
+
+    return new Promise(resolve => setInterval(resolve))
+})
+
